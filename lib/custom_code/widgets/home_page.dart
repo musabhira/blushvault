@@ -47,18 +47,52 @@ class _HomePageState extends State<HomePage> {
           .eq('is_active', true)
           .order('order_position');
 
-      final productsData = await supabase
-          .from('products')
-          .select(
-              '*, categories(name), sub_categories:categories!products_sub_category_id_fkey(name)')
-          .eq('is_active', true)
-          .order('created_at', ascending: false);
+      // Cautious select for categories to handle potential schema updates
+      dynamic categoriesData;
+      try {
+        categoriesData = await supabase
+            .from('categories')
+            .select('*, parent:categories!categories_parent_id_fkey(name)')
+            .eq('is_active', true)
+            .order('name');
+      } catch (e) {
+        print('Nested categories select failed, falling back: $e');
+        categoriesData = await supabase
+            .from('categories')
+            .select()
+            .eq('is_active', true)
+            .order('name');
+      }
 
-      final categoriesData = await supabase
-          .from('categories')
-          .select('*, parent:categories!categories_parent_id_fkey(name)')
-          .eq('is_active', true)
-          .order('name');
+      // Cautious select for products
+      dynamic productsData;
+      try {
+        productsData = await supabase
+            .from('products')
+            .select(
+                '*, category:categories!products_category_id_fkey(id, name), sub_category:categories!products_sub_category_id_fkey(name)')
+            .eq('is_active', true)
+            .order('created_at', ascending: false);
+      } catch (e) {
+        print('Nested products select failed, falling back to basic join: $e');
+        try {
+          // If the products_sub_category_id_fkey doesn't exist yet, try just the main category with explicit fkey
+          productsData = await supabase
+              .from('products')
+              .select(
+                  '*, category:categories!products_category_id_fkey(id, name)')
+              .eq('is_active', true)
+              .order('created_at', ascending: false);
+        } catch (e2) {
+          print('Explicit join fallback failed, trying legacy join: $e2');
+          // Last resort: standard join (might fail if multiple fkeys exist)
+          productsData = await supabase
+              .from('products')
+              .select('*, categories(name)')
+              .eq('is_active', true)
+              .order('created_at', ascending: false);
+        }
+      }
 
       final galleryData = await supabase
           .from('gallery')
@@ -74,8 +108,13 @@ class _HomePageState extends State<HomePage> {
         isLoading = false;
       });
     } catch (e) {
-      print('Error loading data: $e');
+      print('CRITICAL: Error loading data: $e');
       setState(() => isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load data: $e')),
+        );
+      }
     }
   }
 

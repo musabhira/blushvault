@@ -9,6 +9,7 @@ import 'product_detail_page.dart';
 import 'wishlist_page.dart';
 import 'home_widgets.dart'; // Ensure this is imported for the new widgets
 import 'jewelry_layout_widget.dart'; // Keep this if user wants to keep the "JewelryLayout" section
+import 'category_products_page.dart';
 
 class HomePageMobile extends StatelessWidget {
   final List<dynamic> banners;
@@ -83,6 +84,7 @@ class HomePageMobile extends StatelessWidget {
         onToggleWishlist: onToggleWishlist,
         onShowCart: onShowCart,
         categories: categories,
+        products: products,
         onCategorySelected: onCategorySelected,
       ),
       body: SafeArea(
@@ -482,6 +484,7 @@ class CommonDrawer extends StatelessWidget {
   final Function(Map<String, dynamic>) onToggleWishlist;
   final VoidCallback onShowCart;
   final List<dynamic> categories;
+  final List<dynamic> products;
   final Function(String) onCategorySelected;
 
   const CommonDrawer({
@@ -492,8 +495,28 @@ class CommonDrawer extends StatelessWidget {
     required this.onToggleWishlist,
     required this.onShowCart,
     required this.categories,
+    required this.products,
     required this.onCategorySelected,
   });
+
+  void _navigateToCategory(BuildContext context, String categoryName) {
+    Navigator.pop(context); // Close drawer
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CategoryProductsPage(
+          categoryName: categoryName,
+          allProducts: products,
+          categories: categories,
+          cart: cart,
+          wishlist: wishlist,
+          onAddToCart: onAddToCart,
+          onToggleWishlist: onToggleWishlist,
+          onShowCart: onShowCart,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -585,10 +608,7 @@ class CommonDrawer extends StatelessWidget {
                       color: textPrimary,
                       fontWeight: FontWeight.w600,
                     )),
-                onTap: () {
-                  Navigator.pop(context);
-                  onCategorySelected(mainCat['name']);
-                },
+                onTap: () => _navigateToCategory(context, mainCat['name']),
               );
             }
 
@@ -607,10 +627,7 @@ class CommonDrawer extends StatelessWidget {
                         fontSize: 12,
                         color: textSecondary,
                       )),
-                  onTap: () {
-                    Navigator.pop(context);
-                    onCategorySelected(mainCat['name']);
-                  },
+                  onTap: () => _navigateToCategory(context, mainCat['name']),
                 ),
                 ...subs.map((sub) => ListTile(
                       title: Text(sub['name'].toUpperCase(),
@@ -618,10 +635,7 @@ class CommonDrawer extends StatelessWidget {
                             fontSize: 12,
                             color: textSecondary,
                           )),
-                      onTap: () {
-                        Navigator.pop(context);
-                        onCategorySelected(sub['name']);
-                      },
+                      onTap: () => _navigateToCategory(context, sub['name']),
                     )),
               ],
             );

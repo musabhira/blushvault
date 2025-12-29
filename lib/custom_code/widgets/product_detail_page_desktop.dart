@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class ProductDetailPageDesktop extends StatefulWidget {
   final Map<String, dynamic> product;
@@ -62,6 +66,106 @@ class _ProductDetailPageDesktopState extends State<ProductDetailPageDesktop> {
     super.dispose();
   }
 
+  void _showShareOptions() {
+    final String productUrl =
+        'https://www.blushvault.in/product/${widget.product['id']}';
+    final String productName = widget.product['name'] ?? 'Product';
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Container(
+            width: 400,
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Share Product',
+                  style: GoogleFonts.nunitoSans(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 32),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _shareOption(
+                      icon: FontAwesomeIcons.whatsapp,
+                      label: 'WhatsApp',
+                      color: const Color(0xFF25D366),
+                      onTap: () async {
+                        Navigator.pop(context);
+                        final String message =
+                            'Check out this beautiful item from BlushVault: $productName\n$productUrl';
+                        final String whatsappUrl =
+                            'https://wa.me/?text=${Uri.encodeComponent(message)}';
+                        if (await canLaunchUrl(Uri.parse(whatsappUrl))) {
+                          await launchUrl(Uri.parse(whatsappUrl),
+                              mode: LaunchMode.externalApplication);
+                        }
+                      },
+                    ),
+                    _shareOption(
+                      icon: Icons.link,
+                      label: 'Copy Link',
+                      color: Colors.blue,
+                      onTap: () {
+                        Navigator.pop(context);
+                        Clipboard.setData(ClipboardData(text: productUrl));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Product link copied to clipboard!'),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _shareOption({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: FaIcon(icon, color: color, size: 40),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            label,
+            style: GoogleFonts.nunitoSans(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -79,10 +183,13 @@ class _ProductDetailPageDesktopState extends State<ProductDetailPageDesktop> {
           padding: const EdgeInsets.only(left: 60),
           child: Align(
             alignment: Alignment.centerLeft,
-            child: Image.network(
-              'https://storage.googleapis.com/flutterflow-io-6f20.appspot.com/projects/blushvault-jw8pdn/assets/gpx3poi3nbc1/Asset_25.png',
-              height: 35,
-              fit: BoxFit.contain,
+            child: InkWell(
+              onTap: () => context.go('/'),
+              child: Image.network(
+                'https://storage.googleapis.com/flutterflow-io-6f20.appspot.com/projects/blushvault-jw8pdn/assets/gpx3poi3nbc1/Asset_25.png',
+                height: 35,
+                fit: BoxFit.contain,
+              ),
             ),
           ),
         ),
@@ -91,9 +198,18 @@ class _ProductDetailPageDesktopState extends State<ProductDetailPageDesktop> {
             padding: const EdgeInsets.only(right: 60),
             child: Row(
               children: [
+                if (!Navigator.canPop(context))
+                  IconButton(
+                    icon: const Icon(Icons.home_outlined, color: Colors.black),
+                    onPressed: () => context.go('/'),
+                  ),
                 IconButton(
                   icon: const Icon(Icons.search, color: Colors.black),
                   onPressed: () {},
+                ),
+                IconButton(
+                  icon: const Icon(Icons.share_outlined, color: Colors.black),
+                  onPressed: _showShareOptions,
                 ),
                 IconButton(
                   icon: const Icon(Icons.shopping_bag_outlined,

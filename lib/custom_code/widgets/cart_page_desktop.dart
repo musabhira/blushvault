@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class CartPageDesktop extends StatefulWidget {
   final List<Map<String, dynamic>> cart;
@@ -51,6 +52,34 @@ class _CartPageDesktopState extends State<CartPageDesktop> {
     setState(() {
       widget.onRemove(index);
     });
+  }
+
+  Future<void> _launchWhatsApp() async {
+    final StringBuffer message = StringBuffer();
+    message.writeln('New Order Request');
+    message.writeln('----------------');
+    for (final item in widget.cart) {
+      final double totalItemPrice =
+          (item['price'] ?? 0.0) * (item['quantity'] ?? 1);
+      message.writeln(
+          '${item['name']} x ${item['quantity']}: ₹${totalItemPrice.toStringAsFixed(0)}');
+    }
+    message.writeln('----------------');
+    message.writeln('Total: ₹${_subtotal.toStringAsFixed(2)}');
+
+    final String whatsappUrl =
+        'https://wa.me/919496905158?text=${Uri.encodeComponent(message.toString())}';
+
+    if (await canLaunchUrl(Uri.parse(whatsappUrl))) {
+      await launchUrl(Uri.parse(whatsappUrl),
+          mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not launch WhatsApp')),
+        );
+      }
+    }
   }
 
   @override
@@ -424,25 +453,28 @@ class _CartPageDesktopState extends State<CartPageDesktop> {
                           //   ],
                           // ),
                           // const SizedBox(height: 32),
-                          // SizedBox(
-                          //   width: double.infinity,
-                          //   height: 56,
-                          //   child: ElevatedButton(
-                          //     onPressed: () {},
-                          //     style: ElevatedButton.styleFrom(
-                          //       backgroundColor: const Color(0xFF997C5B),
-                          //       foregroundColor: Colors.white,
-                          //       elevation: 0,
-                          //     ),
-                          //     child: Text(
-                          //       'CHECKOUT',
-                          //       style: GoogleFonts.nunitoSans(
-                          //         fontWeight: FontWeight.bold,
-                          //         letterSpacing: 2,
-                          //       ),
-                          //     ),
-                          //   ),
-                          // ),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 56,
+                            child: ElevatedButton(
+                              onPressed: _launchWhatsApp,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF997C5B),
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ),
+                              child: Text(
+                                'CHECKOUT',
+                                style: GoogleFonts.nunitoSans(
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 2,
+                                ),
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),

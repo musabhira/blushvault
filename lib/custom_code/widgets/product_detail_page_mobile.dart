@@ -1,6 +1,9 @@
-import 'package:blushvault/custom_code/widgets/home_widgets.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
@@ -63,6 +66,105 @@ class _ProductDetailPageMobileState extends State<ProductDetailPageMobile> {
     super.dispose();
   }
 
+  void _showShareOptions() {
+    final String productUrl =
+        'https://www.blushvault.in/product/${widget.product['id']}';
+    final String productName = widget.product['name'] ?? 'Product';
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Share Product',
+                style: GoogleFonts.nunitoSans(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _shareOption(
+                    icon: FontAwesomeIcons.whatsapp,
+                    label: 'WhatsApp',
+                    color: const Color(0xFF25D366),
+                    onTap: () async {
+                      Navigator.pop(context);
+                      final String message =
+                          'Check out this beautiful item from BlushVault: $productName\n$productUrl';
+                      final String whatsappUrl =
+                          'https://wa.me/?text=${Uri.encodeComponent(message)}';
+                      if (await canLaunchUrl(Uri.parse(whatsappUrl))) {
+                        await launchUrl(Uri.parse(whatsappUrl),
+                            mode: LaunchMode.externalApplication);
+                      }
+                    },
+                  ),
+                  _shareOption(
+                    icon: Icons.link,
+                    label: 'Copy Link',
+                    color: Colors.blue,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Clipboard.setData(ClipboardData(text: productUrl));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Product link copied to clipboard!'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _shareOption({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: FaIcon(icon, color: color, size: 30),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: GoogleFonts.nunitoSans(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -71,8 +173,17 @@ class _ProductDetailPageMobileState extends State<ProductDetailPageMobile> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
+          icon: Icon(
+            Navigator.canPop(context) ? Icons.arrow_back : Icons.home_outlined,
+            color: Colors.black,
+          ),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              context.go('/');
+            }
+          },
         ),
         centerTitle: true,
         title: Image.network(
@@ -81,6 +192,10 @@ class _ProductDetailPageMobileState extends State<ProductDetailPageMobile> {
           fit: BoxFit.contain,
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.share_outlined, color: Colors.black),
+            onPressed: _showShareOptions,
+          ),
           IconButton(
             icon: const Icon(Icons.shopping_bag_outlined, color: Colors.black),
             onPressed: widget.onShowCart,

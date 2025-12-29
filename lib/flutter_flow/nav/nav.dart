@@ -13,6 +13,7 @@ import '/flutter_flow/flutter_flow_util.dart';
 import 'serialization_util.dart';
 
 import '/index.dart';
+import '/custom_code/widgets/product_details_wrapper.dart';
 
 export 'package:go_router/go_router.dart';
 export 'serialization_util.dart';
@@ -51,6 +52,14 @@ GoRouter createRouter(AppStateNotifier appStateNotifier) => GoRouter(
           name: HomePageWidget.routeName,
           path: HomePageWidget.routePath,
           builder: (context, params) => HomePageWidget(),
+        ),
+        FFRoute(
+          name: 'ProductDetail',
+          path: '/product/:productId',
+          builder: (context, params) => ProductDetailsWrapper(
+            productId:
+                params.getParam<String>('productId', ParamType.String) ?? '',
+          ),
         )
       ].map((r) => r.toRoute(appStateNotifier)).toList(),
     );

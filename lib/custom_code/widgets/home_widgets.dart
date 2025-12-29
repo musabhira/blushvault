@@ -514,6 +514,9 @@ class ProductSearchDelegate extends SearchDelegate {
         backgroundColor: bgLight,
         elevation: 0,
       ),
+      textTheme: const TextTheme(
+        titleLarge: TextStyle(color: Colors.black, fontSize: 18),
+      ),
       inputDecorationTheme: InputDecorationTheme(
         hintStyle: GoogleFonts.nunitoSans(color: Colors.grey, fontSize: 16),
         border: InputBorder.none,
@@ -618,33 +621,36 @@ class ProductSearchDelegate extends SearchDelegate {
     // Determine responsiveness
     final width = MediaQuery.of(context).size.width;
     final isDesktop = width > 900;
-    final isTablet = width > 600 && width <= 900;
-
-    int crossAxisCount = 2;
-    if (isDesktop) {
-      crossAxisCount = 5;
-    } else if (isTablet) {
-      crossAxisCount = 3;
-    }
 
     return StatefulBuilder(
       builder: (context, setDelegateState) {
         return Container(
           color: bgLight,
-          child: GridView.builder(
-            padding: EdgeInsets.all(isDesktop ? 40 : 16),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: crossAxisCount,
-              childAspectRatio: 0.62,
-              crossAxisSpacing: isDesktop ? 24 : 12,
-              mainAxisSpacing: isDesktop ? 24 : 12,
+          child: ListView.separated(
+            padding: EdgeInsets.symmetric(
+              horizontal: isDesktop ? width * 0.2 : 16,
+              vertical: 20,
             ),
             itemCount: results.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final product = results[index];
-              return GestureDetector(
+              final isFavorite =
+                  wishlist.any((item) => item['id'] == product['id']);
+
+              return SearchProductTile(
+                product: product,
+                isFavorite: isFavorite,
+                onAddToCart: () {
+                  onAddToCart(product);
+                  setDelegateState(() {});
+                },
+                onToggleWishlist: () {
+                  onToggleWishlist(product);
+                  setDelegateState(() {});
+                },
                 onTap: () {
-                  close(context, null); // Close search
+                  close(context, null);
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -653,33 +659,164 @@ class ProductSearchDelegate extends SearchDelegate {
                         onAddToCart: onAddToCart,
                         cart: cart,
                         wishlist: wishlist,
-                        onToggleWishlist: (p) {
-                          onToggleWishlist(p);
-                          setDelegateState(() {});
-                        },
+                        onToggleWishlist: onToggleWishlist,
                         onShowCart: onShowCart,
                       ),
                     ),
-                  );
+                  ).then((_) => setDelegateState(() {}));
                 },
-                child: ProductCard(
-                  product: product,
-                  isFavorite:
-                      wishlist.any((item) => item['id'] == product['id']),
-                  onAddToCart: () {
-                    onAddToCart(product);
-                    setDelegateState(() {}); // Refresh count in search bar
-                  },
-                  onToggleWishlist: () {
-                    onToggleWishlist(product);
-                    setDelegateState(() {}); // Refresh search results UI
-                  },
-                ),
               );
             },
           ),
         );
       },
+    );
+  }
+}
+
+class SearchProductTile extends StatelessWidget {
+  final Map<String, dynamic> product;
+  final bool isFavorite;
+  final VoidCallback onAddToCart;
+  final VoidCallback onToggleWishlist;
+  final VoidCallback onTap;
+
+  const SearchProductTile({
+    super.key,
+    required this.product,
+    required this.isFavorite,
+    required this.onAddToCart,
+    required this.onToggleWishlist,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        height: 120,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Image
+            ClipRRect(
+              borderRadius:
+                  const BorderRadius.horizontal(left: Radius.circular(12)),
+              child: Image.network(
+                product['image_url'],
+                width: 120,
+                height: 120,
+                fit: BoxFit.cover,
+              ),
+            ),
+            const SizedBox(width: 16),
+            // Details
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      product['name'],
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.nunitoSans(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Text(
+                          '₹${product['price']}',
+                          style: GoogleFonts.nunitoSans(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: primaryGold,
+                          ),
+                        ),
+                        if (product['original_price'] != null) ...[
+                          const SizedBox(width: 8),
+                          Text(
+                            '₹${product['original_price']}',
+                            style: GoogleFonts.nunitoSans(
+                              fontSize: 13,
+                              decoration: TextDecoration.lineThrough,
+                              color: textSecondary,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    if (product['discount'] != null)
+                      Text(
+                        '${product['discount']}% OFF',
+                        style: GoogleFonts.nunitoSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: discountTeal,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            // Actions
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    icon: Icon(
+                      isFavorite ? Icons.favorite : Icons.favorite_border,
+                      color: isFavorite ? Colors.red : textPrimary,
+                      size: 22,
+                    ),
+                    onPressed: onToggleWishlist,
+                  ),
+                  SizedBox(
+                    height: 32,
+                    child: OutlinedButton(
+                      onPressed: onAddToCart,
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: primaryDarkBlue),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                      ),
+                      child: Text(
+                        'ADD CART',
+                        style: GoogleFonts.nunitoSans(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: primaryDarkBlue,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
