@@ -342,6 +342,16 @@ class _AdminPageState extends State<AdminPage>
 
   @override
   Widget build(BuildContext context) {
+    Widget content = TabBarView(
+      controller: _tabController,
+      children: [
+        _buildBannerForm(),
+        _buildCategoryForm(),
+        _buildProductForm(),
+        _buildGalleryForm(),
+      ],
+    );
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Admin Panel'),
@@ -355,15 +365,17 @@ class _AdminPageState extends State<AdminPage>
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildBannerForm(),
-          _buildCategoryForm(),
-          _buildProductForm(),
-          _buildGalleryForm(),
-        ],
-      ),
+      body: LayoutBuilder(builder: (context, constraints) {
+        if (constraints.maxWidth > 1080) {
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 900),
+              child: content,
+            ),
+          );
+        }
+        return content;
+      }),
     );
   }
 

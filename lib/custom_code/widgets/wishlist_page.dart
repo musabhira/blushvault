@@ -83,7 +83,9 @@ class _WishlistPageState extends State<WishlistPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final bool isDesktop = MediaQuery.of(context).size.width >= 1080;
+
+    Widget content = Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -161,8 +163,8 @@ class _WishlistPageState extends State<WishlistPage> {
             )
           : GridView.builder(
               padding: const EdgeInsets.all(16),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: isDesktop ? 4 : 2,
                 childAspectRatio: 0.65,
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 16,
@@ -180,7 +182,7 @@ class _WishlistPageState extends State<WishlistPage> {
                           MaterialPageRoute(
                             builder: (context) => ProductDetailPage(
                               product: product,
-                              onAddToCart: (product, {quantity = 1}) {
+                              onAddToCart: (product, {int? quantity}) {
                                 widget.onAddToCart?.call(product);
                               },
                               cart: widget.cart,
@@ -324,5 +326,18 @@ class _WishlistPageState extends State<WishlistPage> {
               },
             ),
     );
+
+    if (isDesktop) {
+      return Container(
+        color: Colors.grey[100],
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1440),
+            child: content,
+          ),
+        ),
+      );
+    }
+    return content;
   }
 }
