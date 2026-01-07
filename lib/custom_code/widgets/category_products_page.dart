@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
 import 'home_widgets.dart';
-import 'product_detail_page.dart';
 
 class CategoryProductsPage extends StatelessWidget {
   final String categoryName;
@@ -30,7 +30,7 @@ class CategoryProductsPage extends StatelessWidget {
 
     dynamic selectedCat;
     for (final cat in categories) {
-      if (cat['name'] == categoryName) {
+      if (cat['name'].toString().toLowerCase() == categoryName.toLowerCase()) {
         selectedCat = cat;
         break;
       }
@@ -38,12 +38,12 @@ class CategoryProductsPage extends StatelessWidget {
 
     if (selectedCat == null) return [];
 
-    final String selectedId = selectedCat['id'];
+    final String selectedId = selectedCat['id'].toString();
 
     return allProducts.where((p) {
-      final bool matchesMain = p['category_id'] == selectedId;
-      final bool matchesSub = p['sub_category_id'] == selectedId;
-      return matchesMain || matchesSub;
+      final String pCatId = (p['category_id'] ?? '').toString();
+      final String pSubCatId = (p['sub_category_id'] ?? '').toString();
+      return pCatId == selectedId || pSubCatId == selectedId;
     }).toList();
   }
 
@@ -52,89 +52,105 @@ class CategoryProductsPage extends StatelessWidget {
     final filteredProducts = getFilteredProducts();
     final bool isDesktop = MediaQuery.of(context).size.width >= 1080;
 
-    Widget content = Scaffold(
+    return Scaffold(
       backgroundColor: bgLight,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: bgLight,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
+        toolbarHeight: isDesktop ? 90 : kToolbarHeight,
+        leadingWidth: isDesktop ? 300 : 56,
+        leading: isDesktop
+            ? Padding(
+                padding: const EdgeInsets.only(left: 40),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: Image.network(
+                        'https://storage.googleapis.com/flutterflow-io-6f20.appspot.com/projects/blushvault-jw8pdn/assets/gpx3poi3nbc1/Asset_25.png',
+                        height: 45,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            : IconButton(
+                icon: const Icon(Icons.arrow_back, color: textPrimary),
+                onPressed: () => Navigator.pop(context),
+              ),
         title: Text(
           categoryName.toUpperCase(),
           style: GoogleFonts.nunitoSans(
             color: textPrimary,
             fontWeight: FontWeight.bold,
             letterSpacing: 1.2,
+            fontSize: isDesktop ? 20 : 16,
           ),
         ),
         centerTitle: true,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.shopping_bag_outlined, color: textPrimary),
-            onPressed: onShowCart,
+          Padding(
+            padding: EdgeInsets.only(right: isDesktop ? 40 : 8),
+            child: IconButton(
+              icon: const Icon(Icons.shopping_bag_outlined, color: textPrimary),
+              onPressed: onShowCart,
+            ),
           ),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(color: Colors.black.withOpacity(0.05), height: 1),
+        ),
       ),
-      body: filteredProducts.isEmpty
-          ? Center(
-              child: Text(
-                'No products found in this category',
-                style: GoogleFonts.nunitoSans(color: textSecondary),
-              ),
-            )
-          : GridView.builder(
-              padding: const EdgeInsets.all(16),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: isDesktop ? 4 : 2,
-                childAspectRatio: 0.7,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-              ),
-              itemCount: filteredProducts.length,
-              itemBuilder: (context, index) {
-                final product = filteredProducts[index];
-                return GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ProductDetailPage(
-                          product: product,
-                          onAddToCart: onAddToCart,
-                          cart: cart,
-                          wishlist: wishlist,
-                          onToggleWishlist: onToggleWishlist,
-                          onShowCart: onShowCart,
-                        ),
+      body: Center(
+        child: ConstrainedBox(
+          constraints:
+              BoxConstraints(maxWidth: isDesktop ? 1440 : double.infinity),
+          child: filteredProducts.isEmpty
+              ? Center(
+                  child: Text(
+                    'No products found in this category',
+                    style: GoogleFonts.nunitoSans(color: textSecondary),
+                  ),
+                )
+              : GridView.builder(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 40,
+                    vertical: 40,
+                  ),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: isDesktop ? 4 : 2,
+                    childAspectRatio: 0.75,
+                    crossAxisSpacing: 30,
+                    mainAxisSpacing: 50,
+                  ),
+                  itemCount: filteredProducts.length,
+                  itemBuilder: (context, index) {
+                    final product = filteredProducts[index];
+                    return GestureDetector(
+                      onTap: () {
+                        context.pushNamed(
+                          'ProductDetail',
+                          pathParameters: {
+                            'productId': product['id'].toString(),
+                          },
+                        );
+                      },
+                      child: ProductCard(
+                        product: product,
+                        isFavorite:
+                            wishlist.any((item) => item['id'] == product['id']),
+                        onAddToCart: () => onAddToCart(product),
+                        onToggleWishlist: () => onToggleWishlist(product),
                       ),
                     );
                   },
-                  child: ProductCard(
-                    product: product,
-                    isFavorite:
-                        wishlist.any((item) => item['id'] == product['id']),
-                    onAddToCart: () => onAddToCart(product),
-                    onToggleWishlist: () => onToggleWishlist(product),
-                  ),
-                );
-              },
-            ),
-    );
-
-    if (isDesktop) {
-      return Container(
-        color: bgLight,
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1440),
-            child: content,
-          ),
+                ),
         ),
-      );
-    }
-
-    return content;
+      ),
+    );
   }
 }

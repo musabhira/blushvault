@@ -5,15 +5,12 @@ import 'package:go_router/go_router.dart';
 import 'package:page_transition/page_transition.dart';
 import 'package:provider/provider.dart';
 
-import '/main.dart';
-import '/flutter_flow/flutter_flow_theme.dart';
-import '/flutter_flow/lat_lng.dart';
-import '/flutter_flow/place.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import 'serialization_util.dart';
 
 import '/index.dart';
 import '/custom_code/widgets/product_details_wrapper.dart';
+import '/custom_code/widgets/admin_page.dart';
 
 export 'package:go_router/go_router.dart';
 export 'serialization_util.dart';
@@ -55,11 +52,16 @@ GoRouter createRouter(AppStateNotifier appStateNotifier) => GoRouter(
         ),
         FFRoute(
           name: 'ProductDetail',
-          path: '/product/:productId',
+          path: '/detailpage/:productId',
           builder: (context, params) => ProductDetailsWrapper(
             productId:
                 params.getParam<String>('productId', ParamType.String) ?? '',
           ),
+        ),
+        FFRoute(
+          name: 'Admin',
+          path: '/admin',
+          builder: (context, params) => const AdminPage(),
         )
       ].map((r) => r.toRoute(appStateNotifier)).toList(),
     );
@@ -223,7 +225,9 @@ class TransitionInfo {
   final Duration duration;
   final Alignment? alignment;
 
-  static TransitionInfo appDefault() => TransitionInfo(hasTransition: false);
+  static TransitionInfo appDefault() => const TransitionInfo(
+        hasTransition: false,
+      );
 }
 
 class RootPageContext {

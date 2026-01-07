@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'home_widgets.dart';
 
 class ProductDetailPageDesktop extends StatefulWidget {
   final Map<String, dynamic> product;
@@ -67,8 +68,9 @@ class _ProductDetailPageDesktopState extends State<ProductDetailPageDesktop> {
   }
 
   void _showShareOptions() {
+    final String currentBaseUrl = Uri.base.origin;
     final String productUrl =
-        'https://www.blushvault.in/product/${widget.product['id']}';
+        '$currentBaseUrl/detailpage/${widget.product['id']}';
     final String productName = widget.product['name'] ?? 'Product';
 
     showDialog(
@@ -169,18 +171,18 @@ class _ProductDetailPageDesktopState extends State<ProductDetailPageDesktop> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: bgLight,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: bgLight,
         elevation: 0,
         toolbarHeight: 90,
         leadingWidth: 300,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Container(color: Colors.grey[200], height: 1),
+          child: Container(color: Colors.black.withOpacity(0.05), height: 1),
         ),
         leading: Padding(
-          padding: const EdgeInsets.only(left: 60),
+          padding: const EdgeInsets.only(left: 40),
           child: Align(
             alignment: Alignment.centerLeft,
             child: InkWell(
@@ -195,26 +197,22 @@ class _ProductDetailPageDesktopState extends State<ProductDetailPageDesktop> {
         ),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 60),
+            padding: const EdgeInsets.only(right: 40),
             child: Row(
               children: [
-                if (!Navigator.canPop(context))
-                  IconButton(
-                    icon: const Icon(Icons.home_outlined, color: Colors.black),
-                    onPressed: () => context.go('/'),
-                  ),
-                IconButton(
-                  icon: const Icon(Icons.search, color: Colors.black),
-                  onPressed: () {},
-                ),
                 IconButton(
                   icon: const Icon(Icons.share_outlined, color: Colors.black),
                   onPressed: _showShareOptions,
                 ),
-                IconButton(
-                  icon: const Icon(Icons.shopping_bag_outlined,
-                      color: Colors.black),
-                  onPressed: widget.onShowCart,
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.shopping_bag_outlined,
+                          color: Colors.black),
+                      onPressed: widget.onShowCart,
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -222,258 +220,269 @@ class _ProductDetailPageDesktopState extends State<ProductDetailPageDesktop> {
         ],
       ),
       body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(100, 60, 100, 100),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // --- LEFT: IMAGE GALLERY ---
-              Expanded(
-                flex: 6,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Thumbnails Strip
-                    SizedBox(
-                      width: 80,
-                      height: 600, // Constrained height for scrolling list
-                      child: ListView.separated(
-                        itemCount: _images.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 16),
-                        itemBuilder: (context, index) {
-                          final isSelected = _selectedImageIndex == index;
-                          return GestureDetector(
-                            onTap: () {
-                              setState(() => _selectedImageIndex = index);
-                              _pageController.animateToPage(
-                                index,
-                                duration: const Duration(milliseconds: 400),
-                                curve: Curves.easeInOut,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1440),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(40, 60, 40, 100),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // --- LEFT: IMAGE GALLERY ---
+                  Expanded(
+                    flex: 6,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Thumbnails Strip
+                        SizedBox(
+                          width: 80,
+                          height: 600, // Constrained height for scrolling list
+                          child: ListView.separated(
+                            itemCount: _images.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 16),
+                            itemBuilder: (context, index) {
+                              final isSelected = _selectedImageIndex == index;
+                              return GestureDetector(
+                                onTap: () {
+                                  setState(() => _selectedImageIndex = index);
+                                  _pageController.animateToPage(
+                                    index,
+                                    duration: const Duration(milliseconds: 400),
+                                    curve: Curves.easeInOut,
+                                  );
+                                },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 300),
+                                  decoration: BoxDecoration(
+                                    border: isSelected
+                                        ? Border.all(
+                                            color: Colors.black, width: 1)
+                                        : null,
+                                  ),
+                                  child: Image.network(
+                                    _images[index],
+                                    width: 80,
+                                    height: 100,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
                               );
                             },
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 300),
-                              decoration: BoxDecoration(
-                                border: isSelected
-                                    ? Border.all(color: Colors.black, width: 1)
-                                    : null,
-                              ),
-                              child: Image.network(
-                                _images[index],
-                                width: 80,
-                                height: 100,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 40),
-                    // Main Image (Sticky-ish behavior visual)
-                    Expanded(
-                      child: AspectRatio(
-                        aspectRatio: 0.8,
-                        child: PageView.builder(
-                          controller: _pageController,
-                          onPageChanged: (index) =>
-                              setState(() => _selectedImageIndex = index),
-                          itemCount: _images.length,
-                          itemBuilder: (context, index) {
-                            return Image.network(
-                              _images[index],
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                            );
-                          },
+                          ),
                         ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(width: 80),
-
-              // --- RIGHT: PRODUCT INFO (Sticky Column) ---
-              Expanded(
-                flex: 4,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
+                        const SizedBox(width: 40),
+                        // Main Image (Sticky-ish behavior visual)
                         Expanded(
-                          child: Text(
-                            widget.product['name']?.toUpperCase() ?? '',
-                            style: GoogleFonts.nunitoSans(
-                              fontSize: 32,
-                              fontWeight: FontWeight.w400, // Light/Regular
-                              letterSpacing: 1.5,
-                              color: Colors.black,
+                          child: AspectRatio(
+                            aspectRatio: 0.8,
+                            child: PageView.builder(
+                              controller: _pageController,
+                              onPageChanged: (index) =>
+                                  setState(() => _selectedImageIndex = index),
+                              itemCount: _images.length,
+                              itemBuilder: (context, index) {
+                                return Image.network(
+                                  _images[index],
+                                  fit: BoxFit.cover,
+                                  width: double.infinity,
+                                );
+                              },
                             ),
                           ),
                         ),
-                        IconButton(
-                          icon: Icon(
-                            widget.wishlist.any((item) =>
-                                    item['id'] == widget.product['id'])
-                                ? Icons.favorite
-                                : Icons.favorite_border,
-                            color: widget.wishlist.any((item) =>
-                                    item['id'] == widget.product['id'])
-                                ? Colors.red
-                                : Colors.black,
-                          ),
-                          onPressed: () =>
-                              widget.onToggleWishlist(widget.product),
-                        ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Text(
-                          '₹${widget.product['price']}',
-                          style: GoogleFonts.nunitoSans(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
-                        if (widget.product['original_price'] != null) ...[
-                          const SizedBox(width: 16),
-                          Text(
-                            '₹${widget.product['original_price']}',
-                            style: GoogleFonts.nunitoSans(
-                              fontSize: 18,
-                              decoration: TextDecoration.lineThrough,
-                              color: Colors.grey,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Free Shipping on orders above ₹999',
-                      style: GoogleFonts.nunitoSans(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    const SizedBox(height: 48),
+                  ),
 
-                    // Quantity
-                    Text(
-                      'QUANTITY',
-                      style: GoogleFonts.nunitoSans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1),
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      width: 120,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey[300]!),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          IconButton(
-                            onPressed: widget.onDecrement,
-                            icon: const Icon(Icons.remove, size: 16),
-                          ),
-                          Text('${widget.quantity}',
+                  const SizedBox(width: 80),
+
+                  // --- RIGHT: PRODUCT INFO (Sticky Column) ---
+                  Expanded(
+                    flex: 4,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                widget.product['name']?.toUpperCase() ?? '',
+                                style: GoogleFonts.nunitoSans(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.w400, // Light/Regular
+                                  letterSpacing: 1.5,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: Icon(
+                                widget.wishlist.any((item) =>
+                                        item['id'] == widget.product['id'])
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
+                                color: widget.wishlist.any((item) =>
+                                        item['id'] == widget.product['id'])
+                                    ? Colors.red
+                                    : Colors.black,
+                              ),
+                              onPressed: () =>
+                                  widget.onToggleWishlist(widget.product),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Text(
+                              '₹${widget.product['price']}',
                               style: GoogleFonts.nunitoSans(
-                                  fontWeight: FontWeight.bold)),
-                          IconButton(
-                            onPressed: widget.onIncrement,
-                            icon: const Icon(Icons.add, size: 16),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-
-                    // Buttons
-                    Row(
-                      children: [
-                        Expanded(
-                          child: SizedBox(
-                            height: 56,
-                            child: OutlinedButton(
-                              onPressed: () => widget.onAddToCart(
-                                  widget.product,
-                                  quantity: widget.quantity),
-                              style: OutlinedButton.styleFrom(
-                                side:
-                                    const BorderSide(color: Color(0xFF997C5B)),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30),
-                                ),
-                              ),
-                              child: Text(
-                                'ADD TO CART',
-                                style: GoogleFonts.nunitoSans(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF997C5B),
-                                  letterSpacing: 1.2,
-                                ),
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
                               ),
                             ),
+                            if (widget.product['original_price'] != null) ...[
+                              const SizedBox(width: 16),
+                              Text(
+                                '₹${widget.product['original_price']}',
+                                style: GoogleFonts.nunitoSans(
+                                  fontSize: 18,
+                                  decoration: TextDecoration.lineThrough,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Free Shipping on orders above ₹999',
+                          style: GoogleFonts.nunitoSans(
+                            fontSize: 14,
+                            color: Colors.grey[600],
                           ),
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: SizedBox(
-                            height: 56,
-                            child: ElevatedButton(
-                              onPressed: widget.onBuyNow,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF997C5B),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30),
-                                ),
+                        const SizedBox(height: 48),
+
+                        // Quantity
+                        Text(
+                          'QUANTITY',
+                          style: GoogleFonts.nunitoSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1,
+                              color: Colors.black),
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          width: 120,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey[300]!),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              IconButton(
+                                onPressed: widget.onDecrement,
+                                icon: const Icon(Icons.remove,
+                                    color: Colors.black, size: 16),
                               ),
-                              child: Text(
-                                'BUY IT NOW',
-                                style: GoogleFonts.nunitoSans(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  letterSpacing: 1.2,
+                              Text('${widget.quantity}',
+                                  style: GoogleFonts.nunitoSans(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black)),
+                              IconButton(
+                                onPressed: widget.onIncrement,
+                                icon: const Icon(Icons.add,
+                                    color: Colors.black, size: 16),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+
+                        // Buttons
+                        Row(
+                          children: [
+                            Expanded(
+                              child: SizedBox(
+                                height: 56,
+                                child: OutlinedButton(
+                                  onPressed: () => widget.onAddToCart(
+                                      widget.product,
+                                      quantity: widget.quantity),
+                                  style: OutlinedButton.styleFrom(
+                                    side: const BorderSide(
+                                        color: Color(0xFF997C5B)),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(30),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'ADD TO CART',
+                                    style: GoogleFonts.nunitoSans(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFF997C5B),
+                                      letterSpacing: 1.2,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: SizedBox(
+                                height: 56,
+                                child: ElevatedButton(
+                                  onPressed: widget.onBuyNow,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF997C5B),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(30),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'BUY IT NOW',
+                                    style: GoogleFonts.nunitoSans(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                      letterSpacing: 1.2,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 60),
+
+                        // Accordions
+                        _buildAccordion(
+                          'DESCRIPTION',
+                          widget.product['description'] ??
+                              'The Sacred Prism Necklace is a modern amulet, designed to reflect light and energy. \n\nHandcrafted in 18k gold plated brass. \nSet with custom cut crystals. \nNickel-free and hypoallergenic.',
+                        ),
+                        _buildAccordion(
+                          'SHIPPING INFORMATION',
+                          'We ship worldwide. \nFree standard shipping on international orders above \$200. \nDomestic orders are delivered within 3-5 business days.',
+                        ),
+                        _buildAccordion(
+                          'WARRANTY',
+                          'One year warranty on plating and manufacturing defects. Does not cover wear and tear.',
                         ),
                       ],
                     ),
-
-                    const SizedBox(height: 60),
-
-                    // Accordions
-                    _buildAccordion(
-                      'DESCRIPTION',
-                      widget.product['description'] ??
-                          'The Sacred Prism Necklace is a modern amulet, designed to reflect light and energy. \n\nHandcrafted in 18k gold plated brass. \nSet with custom cut crystals. \nNickel-free and hypoallergenic.',
-                    ),
-                    _buildAccordion(
-                      'SHIPPING INFORMATION',
-                      'We ship worldwide. \nFree standard shipping on international orders above \$200. \nDomestic orders are delivered within 3-5 business days.',
-                    ),
-                    _buildAccordion(
-                      'WARRANTY',
-                      'One year warranty on plating and manufacturing defects. Does not cover wear and tear.',
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),

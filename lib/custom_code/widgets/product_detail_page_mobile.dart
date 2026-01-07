@@ -67,8 +67,9 @@ class _ProductDetailPageMobileState extends State<ProductDetailPageMobile> {
   }
 
   void _showShareOptions() {
+    final String currentBaseUrl = Uri.base.origin;
     final String productUrl =
-        'https://www.blushvault.in/product/${widget.product['id']}';
+        '$currentBaseUrl/detailpage/${widget.product['id']}';
     final String productName = widget.product['name'] ?? 'Product';
 
     showModalBottomSheet(
@@ -186,10 +187,13 @@ class _ProductDetailPageMobileState extends State<ProductDetailPageMobile> {
           },
         ),
         centerTitle: true,
-        title: Image.network(
-          'https://storage.googleapis.com/flutterflow-io-6f20.appspot.com/projects/blushvault-jw8pdn/assets/gpx3poi3nbc1/Asset_25.png',
-          height: 24,
-          fit: BoxFit.contain,
+        title: GestureDetector(
+          onTap: () => context.go('/'),
+          child: Image.network(
+            'https://storage.googleapis.com/flutterflow-io-6f20.appspot.com/projects/blushvault-jw8pdn/assets/gpx3poi3nbc1/Asset_25.png',
+            height: 24,
+            fit: BoxFit.contain,
+          ),
         ),
         actions: [
           IconButton(

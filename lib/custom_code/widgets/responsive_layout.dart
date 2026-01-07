@@ -17,15 +17,7 @@ class ResponsiveLayout extends StatelessWidget {
         if (constraints.maxWidth < 1080) {
           return mobileBody;
         } else {
-          return Container(
-            color: const Color(0xFFF6F1EB), // Use bgLight color
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1440),
-                child: desktopBody,
-              ),
-            ),
-          );
+          return desktopBody;
         }
       },
     );

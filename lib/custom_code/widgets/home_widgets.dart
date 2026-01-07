@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'product_detail_page.dart';
+import 'package:go_router/go_router.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 // --- CONSTANTS ---
 const primaryDarkBlue = Color(0xFF0A1E40); // Dark Blue for Announcement/Buttons
@@ -26,6 +28,7 @@ class _AnnouncementBarState extends State<AnnouncementBar> {
     'SIGN UP & GET 10% OFF ON YOUR FIRST ORDER',
   ];
   int _index = 0;
+  Timer? _timer;
 
   @override
   void initState() {
@@ -33,13 +36,20 @@ class _AnnouncementBarState extends State<AnnouncementBar> {
     _startRotation();
   }
 
-  void _startRotation() async {
-    while (true) {
-      await Future.delayed(const Duration(seconds: 5));
-      setState(() {
-        _index = (_index + 1) % _messages.length;
-      });
-    }
+  void _startRotation() {
+    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (mounted) {
+        setState(() {
+          _index = (_index + 1) % _messages.length;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -137,6 +147,115 @@ class CircularCategoryItem extends StatelessWidget {
   }
 }
 
+class BannerCarouselMobile extends StatefulWidget {
+  final List<dynamic> banners;
+
+  const BannerCarouselMobile({super.key, required this.banners});
+
+  @override
+  State<BannerCarouselMobile> createState() => _BannerCarouselMobileState();
+}
+
+class _BannerCarouselMobileState extends State<BannerCarouselMobile> {
+  int currentIndex = 0;
+  late PageController pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    pageController = PageController();
+    if (widget.banners.isNotEmpty) {
+      Future.delayed(const Duration(seconds: 4), autoScroll);
+    }
+  }
+
+  void autoScroll() {
+    if (mounted && widget.banners.isNotEmpty) {
+      final nextIndex = (currentIndex + 1) % widget.banners.length;
+      pageController.animateToPage(
+        nextIndex,
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeInOutCubic,
+      );
+      Future.delayed(const Duration(seconds: 4), autoScroll);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.banners.isEmpty) {
+      return const Center(child: Text('No banners available'));
+    }
+
+    return Stack(
+      children: [
+        PageView.builder(
+          controller: pageController,
+          onPageChanged: (index) => setState(() => currentIndex = index),
+          itemCount: widget.banners.length,
+          itemBuilder: (context, index) {
+            final banner = widget.banners[index];
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.network(
+                  banner['image_url'] ?? '',
+                  fit: BoxFit.cover,
+                ),
+                // Gradient for text readability
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withOpacity(0.1),
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.4),
+                      ],
+                    ),
+                  ),
+                ),
+                // Text Overlay
+              ],
+            );
+          },
+        ),
+        // Indicators
+        Positioned(
+          bottom: 24,
+          left: 0,
+          right: 0,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              widget.banners.length,
+              (index) => AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                width: currentIndex == index ? 24 : 8,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: currentIndex == index
+                      ? Colors.white
+                      : Colors.white.withOpacity(0.4),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  void dispose() {
+    pageController.dispose();
+    super.dispose();
+  }
+}
+
 // --- BANNER CAROUSEL ---
 class BannerCarousel extends StatefulWidget {
   final List<dynamic> banners;
@@ -190,7 +309,7 @@ class _BannerCarouselState extends State<BannerCarousel> {
               fit: StackFit.expand,
               children: [
                 Image.network(
-                  banner['image_url'],
+                  banner['image_url_desktop'] ?? '',
                   fit: BoxFit.cover,
                 ),
                 // Gradient for text readability
@@ -651,19 +770,12 @@ class ProductSearchDelegate extends SearchDelegate {
                 },
                 onTap: () {
                   close(context, null);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ProductDetailPage(
-                        product: product,
-                        onAddToCart: onAddToCart,
-                        cart: cart,
-                        wishlist: wishlist,
-                        onToggleWishlist: onToggleWishlist,
-                        onShowCart: onShowCart,
-                      ),
-                    ),
-                  ).then((_) => setDelegateState(() {}));
+                  context.pushNamed(
+                    'ProductDetail',
+                    pathParameters: {
+                      'productId': product['id'].toString(),
+                    },
+                  );
                 },
               );
             },
@@ -816,6 +928,190 @@ class SearchProductTile extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// --- SHIMMER WIDGETS ---
+class ShimmerBox extends StatelessWidget {
+  final double width;
+  final double height;
+  final double borderRadius;
+
+  const ShimmerBox({
+    super.key,
+    required this.width,
+    required this.height,
+    this.borderRadius = 8,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: BorderRadius.circular(borderRadius),
+      ),
+    ).animate(onPlay: (controller) => controller.repeat()).shimmer(
+          duration: 1200.ms,
+          color: Colors.white.withOpacity(0.6),
+        );
+  }
+}
+
+class ProductDetailShimmerMobile extends StatelessWidget {
+  const ProductDetailShimmerMobile({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: const Icon(Icons.arrow_back, color: Colors.black),
+        centerTitle: true,
+        title: const ShimmerBox(width: 100, height: 20),
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            const ShimmerBox(
+                width: double.infinity, height: 500, borderRadius: 0),
+            Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                children: [
+                  const ShimmerBox(width: 200, height: 28),
+                  const SizedBox(height: 12),
+                  const ShimmerBox(width: 100, height: 24),
+                  const SizedBox(height: 32),
+                  const ShimmerBox(width: 140, height: 40),
+                  const SizedBox(height: 32),
+                  const ShimmerBox(
+                      width: double.infinity, height: 50, borderRadius: 25),
+                  const SizedBox(height: 16),
+                  const ShimmerBox(
+                      width: double.infinity, height: 50, borderRadius: 25),
+                  const SizedBox(height: 48),
+                  ...List.generate(
+                      3,
+                      (index) => Padding(
+                            padding: const EdgeInsets.only(bottom: 20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const ShimmerBox(width: 120, height: 16),
+                                const SizedBox(height: 8),
+                                const ShimmerBox(
+                                    width: double.infinity, height: 14),
+                                const SizedBox(height: 4),
+                                const ShimmerBox(width: 200, height: 14),
+                              ],
+                            ),
+                          )),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ProductDetailShimmerDesktop extends StatelessWidget {
+  const ProductDetailShimmerDesktop({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: bgLight,
+      body: Column(
+        children: [
+          // Mock Navbar Shimmer
+          Container(
+            height: 90,
+            padding: const EdgeInsets.symmetric(horizontal: 60),
+            child: Row(
+              children: [
+                const ShimmerBox(width: 150, height: 40),
+                const Spacer(),
+                Row(
+                  children: List.generate(
+                    4,
+                    (index) => const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20),
+                      child: ShimmerBox(width: 80, height: 16),
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                const ShimmerBox(width: 100, height: 30),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 40),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Image Shimmer
+                  const Expanded(
+                    flex: 1,
+                    child: ShimmerBox(width: double.infinity, height: 700),
+                  ),
+                  const SizedBox(width: 60),
+                  // Details Shimmer
+                  Expanded(
+                    flex: 1,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const ShimmerBox(width: 300, height: 36),
+                        const SizedBox(height: 20),
+                        const ShimmerBox(width: 150, height: 28),
+                        const SizedBox(height: 40),
+                        const ShimmerBox(width: 140, height: 45),
+                        const SizedBox(height: 40),
+                        const ShimmerBox(
+                            width: double.infinity,
+                            height: 50,
+                            borderRadius: 25),
+                        const SizedBox(height: 16),
+                        const ShimmerBox(
+                            width: double.infinity,
+                            height: 50,
+                            borderRadius: 25),
+                        const SizedBox(height: 40),
+                        ...List.generate(
+                          3,
+                          (index) => Padding(
+                            padding: const EdgeInsets.only(bottom: 24),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: const [
+                                ShimmerBox(width: 150, height: 18),
+                                SizedBox(height: 12),
+                                ShimmerBox(width: double.infinity, height: 14),
+                                SizedBox(height: 6),
+                                ShimmerBox(width: 300, height: 14),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

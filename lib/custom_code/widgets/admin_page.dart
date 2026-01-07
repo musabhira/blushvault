@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io' show File;
+import 'home_widgets.dart';
 
 class AdminPage extends StatefulWidget {
   const AdminPage({Key? key}) : super(key: key);
@@ -352,7 +353,7 @@ class _AdminPageState extends State<AdminPage>
       ],
     );
 
-    return Scaffold(
+    Widget page = Scaffold(
       appBar: AppBar(
         title: const Text('Admin Panel'),
         bottom: TabBar(
@@ -365,18 +366,23 @@ class _AdminPageState extends State<AdminPage>
           ],
         ),
       ),
-      body: LayoutBuilder(builder: (context, constraints) {
-        if (constraints.maxWidth > 1080) {
-          return Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 900),
-              child: content,
-            ),
-          );
-        }
-        return content;
-      }),
+      body: content,
     );
+
+    return LayoutBuilder(builder: (context, constraints) {
+      if (constraints.maxWidth > 1080) {
+        return Container(
+          color: bgLight,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1000),
+              child: page,
+            ),
+          ),
+        );
+      }
+      return page;
+    });
   }
 
   Widget _buildBannerForm() {

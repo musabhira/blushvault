@@ -126,10 +126,12 @@ class _ProductDetailsWrapperState extends State<ProductDetailsWrapper> {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return const Scaffold(
-        body:
-            Center(child: CircularProgressIndicator(color: Color(0xFFB08D63))),
-      );
+      final width = MediaQuery.of(context).size.width;
+      if (width < 800) {
+        return const ProductDetailShimmerMobile();
+      } else {
+        return const ProductDetailShimmerDesktop();
+      }
     }
 
     if (error != null || product == null) {

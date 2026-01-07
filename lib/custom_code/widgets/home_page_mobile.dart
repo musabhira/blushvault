@@ -4,11 +4,11 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:go_router/go_router.dart';
 import 'home_page.dart';
-import 'product_detail_page.dart';
 import 'wishlist_page.dart';
-import 'home_widgets.dart'; // Ensure this is imported for the new widgets
-import 'jewelry_layout_widget.dart'; // Keep this if user wants to keep the "JewelryLayout" section
+import 'home_widgets.dart';
+import 'jewelry_layout_widget.dart';
 import 'category_products_page.dart';
 
 class HomePageMobile extends StatelessWidget {
@@ -47,10 +47,13 @@ class HomePageMobile extends StatelessWidget {
     if (selectedCategory == 'All') return products;
 
     // Find the category ID for the selected category
-    final selectedCat = categories.firstWhere(
-      (c) => c['name'] == selectedCategory,
-      orElse: () => null,
-    );
+    dynamic selectedCat;
+    for (final cat in categories) {
+      if (cat['name'] == selectedCategory) {
+        selectedCat = cat;
+        break;
+      }
+    }
 
     if (selectedCat == null) return products;
 
@@ -110,10 +113,13 @@ class HomePageMobile extends StatelessWidget {
                       ),
                     ),
                     centerTitle: true,
-                    title: Image.network(
-                      'https://storage.googleapis.com/flutterflow-io-6f20.appspot.com/projects/blushvault-jw8pdn/assets/gpx3poi3nbc1/Asset_25.png',
-                      height: 28,
-                      fit: BoxFit.contain,
+                    title: GestureDetector(
+                      onTap: () => context.go('/'),
+                      child: Image.network(
+                        'https://storage.googleapis.com/flutterflow-io-6f20.appspot.com/projects/blushvault-jw8pdn/assets/gpx3poi3nbc1/Asset_25.png',
+                        height: 28,
+                        fit: BoxFit.contain,
+                      ),
                     ),
                     actions: [
                       IconButton(
@@ -201,7 +207,7 @@ class HomePageMobile extends StatelessWidget {
                   SliverToBoxAdapter(
                     child: SizedBox(
                       height: 500,
-                      child: BannerCarousel(banners: banners),
+                      child: BannerCarouselMobile(banners: banners),
                     ).animate().fadeIn(duration: 600.ms),
                   ),
 
@@ -297,18 +303,11 @@ class HomePageMobile extends StatelessWidget {
                           final product = filteredProducts[index];
                           return GestureDetector(
                             onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ProductDetailPage(
-                                    product: product,
-                                    onAddToCart: onAddToCart,
-                                    cart: cart,
-                                    wishlist: wishlist,
-                                    onToggleWishlist: onToggleWishlist,
-                                    onShowCart: onShowCart,
-                                  ),
-                                ),
+                              context.pushNamed(
+                                'ProductDetail',
+                                pathParameters: {
+                                  'productId': product['id'].toString(),
+                                },
                               );
                             },
                             child: ProductCard(
@@ -420,13 +419,16 @@ class HomePageMobile extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Text(
-                            'BLUSHVAULT',
-                            style: GoogleFonts.nunitoSans(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 4,
+                          GestureDetector(
+                            onTap: () => context.go('/'),
+                            child: Text(
+                              'BLUSHVAULT',
+                              style: GoogleFonts.nunitoSans(
+                                color: Colors.white,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 4,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 32),
@@ -459,7 +461,7 @@ class HomePageMobile extends StatelessWidget {
                           ),
                           const SizedBox(height: 32),
                           Text(
-                            '© 2024 Blushvault. All Rights Reserved.',
+                            '© 2026 Blushvault. All Rights Reserved.',
                             style: GoogleFonts.nunitoSans(
                                 color: Colors.white38, fontSize: 12),
                           ),
@@ -530,10 +532,16 @@ class CommonDrawer extends StatelessWidget {
               color: bgLight,
             ),
             child: Center(
-              child: Image.network(
-                'https://storage.googleapis.com/flutterflow-io-6f20.appspot.com/projects/blushvault-jw8pdn/assets/gpx3poi3nbc1/Asset_25.png',
-                height: 80,
-                fit: BoxFit.contain,
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.pop(context);
+                  context.go('/');
+                },
+                child: Image.network(
+                  'https://storage.googleapis.com/flutterflow-io-6f20.appspot.com/projects/blushvault-jw8pdn/assets/gpx3poi3nbc1/Asset_25.png',
+                  height: 80,
+                  fit: BoxFit.contain,
+                ),
               ),
             ),
           ),
@@ -580,6 +588,19 @@ class CommonDrawer extends StatelessWidget {
             onTap: () {
               Navigator.pop(context);
               onShowCart();
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.admin_panel_settings_outlined,
+                color: textPrimary),
+            title: Text('ADMIN PANEL',
+                style: GoogleFonts.nunitoSans(
+                  fontWeight: FontWeight.bold,
+                  color: textPrimary,
+                )),
+            onTap: () {
+              Navigator.pop(context);
+              context.pushNamed('Admin');
             },
           ),
           const Divider(),

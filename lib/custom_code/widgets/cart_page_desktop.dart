@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'home_widgets.dart';
 
 class CartPageDesktop extends StatefulWidget {
   final List<Map<String, dynamic>> cart;
@@ -84,7 +86,7 @@ class _CartPageDesktopState extends State<CartPageDesktop> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    Widget content = Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -95,10 +97,16 @@ class _CartPageDesktopState extends State<CartPageDesktop> {
           padding: const EdgeInsets.only(left: 60),
           child: Align(
             alignment: Alignment.centerLeft,
-            child: Image.network(
-              'https://storage.googleapis.com/flutterflow-io-6f20.appspot.com/projects/blushvault-jw8pdn/assets/gpx3poi3nbc1/Asset_25.png',
-              height: 35,
-              fit: BoxFit.contain,
+            child: GestureDetector(
+              onTap: () => context.go('/'),
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: Image.network(
+                  'https://storage.googleapis.com/flutterflow-io-6f20.appspot.com/projects/blushvault-jw8pdn/assets/gpx3poi3nbc1/Asset_25.png',
+                  height: 35,
+                  fit: BoxFit.contain,
+                ),
+              ),
             ),
           ),
         ),
@@ -177,7 +185,8 @@ class _CartPageDesktopState extends State<CartPageDesktop> {
                                           style: GoogleFonts.nunitoSans(
                                               fontWeight: FontWeight.bold,
                                               fontSize: 12,
-                                              letterSpacing: 1)))),
+                                              letterSpacing: 1,
+                                              color: Colors.black)))),
                               Expanded(
                                   flex: 2,
                                   child: Align(
@@ -186,7 +195,8 @@ class _CartPageDesktopState extends State<CartPageDesktop> {
                                           style: GoogleFonts.nunitoSans(
                                               fontWeight: FontWeight.bold,
                                               fontSize: 12,
-                                              letterSpacing: 1)))),
+                                              letterSpacing: 1,
+                                              color: Colors.black)))),
                             ],
                           ),
                         ),
@@ -309,17 +319,19 @@ class _CartPageDesktopState extends State<CartPageDesktop> {
                                                 item['quantity'] == 1
                                                     ? Icons.delete_outline
                                                     : Icons.remove,
-                                                size: 18),
+                                                size: 18,
+                                                color: Colors.black),
                                             onPressed: () =>
                                                 _decrementQuantity(index),
                                           ),
                                           Text('${item['quantity']}',
                                               style: GoogleFonts.nunitoSans(
                                                   fontSize: 16,
-                                                  fontWeight: FontWeight.bold)),
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.black)),
                                           IconButton(
-                                            icon:
-                                                const Icon(Icons.add, size: 18),
+                                            icon: const Icon(Icons.add,
+                                                size: 18, color: Colors.black),
                                             onPressed: () =>
                                                 _incrementQuantity(index),
                                           ),
@@ -371,6 +383,7 @@ class _CartPageDesktopState extends State<CartPageDesktop> {
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                               letterSpacing: 1,
+                              color: Colors.black,
                             ),
                           ),
                           const SizedBox(height: 32),
@@ -379,12 +392,15 @@ class _CartPageDesktopState extends State<CartPageDesktop> {
                             children: [
                               Text(
                                 'Subtotal',
-                                style: GoogleFonts.nunitoSans(fontSize: 16),
+                                style: GoogleFonts.nunitoSans(
+                                    fontSize: 16, color: Colors.black),
                               ),
                               Text(
                                 'Rs. ${_subtotal.toStringAsFixed(2)}',
                                 style: GoogleFonts.nunitoSans(
-                                    fontSize: 16, fontWeight: FontWeight.bold),
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black),
                               ),
                             ],
                           ),
@@ -482,6 +498,16 @@ class _CartPageDesktopState extends State<CartPageDesktop> {
                 ],
               ),
             ),
+    );
+
+    return Container(
+      color: bgLight,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1440),
+          child: content,
+        ),
+      ),
     );
   }
 }

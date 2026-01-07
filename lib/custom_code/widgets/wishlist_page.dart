@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 import 'product_detail_page.dart';
+import 'home_widgets.dart';
 
 class WishlistPage extends StatefulWidget {
   final Map<String, dynamic>?
@@ -329,7 +330,7 @@ class _WishlistPageState extends State<WishlistPage> {
 
     if (isDesktop) {
       return Container(
-        color: Colors.grey[100],
+        color: bgLight,
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 1440),

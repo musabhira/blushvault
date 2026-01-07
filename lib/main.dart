@@ -75,13 +75,64 @@ class _MyAppState extends State<MyApp> {
       theme: ThemeData(
         brightness: Brightness.light,
         useMaterial3: false,
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {
+            TargetPlatform.android: CustomPageTransitionsBuilder(),
+            TargetPlatform.iOS: CustomPageTransitionsBuilder(),
+            TargetPlatform.windows: CustomPageTransitionsBuilder(),
+            TargetPlatform.macOS: CustomPageTransitionsBuilder(),
+            TargetPlatform.linux: CustomPageTransitionsBuilder(),
+          },
+        ),
       ),
       darkTheme: ThemeData(
         brightness: Brightness.dark,
         useMaterial3: false,
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {
+            TargetPlatform.android: CustomPageTransitionsBuilder(),
+            TargetPlatform.iOS: CustomPageTransitionsBuilder(),
+            TargetPlatform.windows: CustomPageTransitionsBuilder(),
+            TargetPlatform.macOS: CustomPageTransitionsBuilder(),
+            TargetPlatform.linux: CustomPageTransitionsBuilder(),
+          },
+        ),
       ),
       themeMode: _themeMode,
       routerConfig: _router,
+    );
+  }
+}
+
+class CustomPageTransitionsBuilder extends PageTransitionsBuilder {
+  const CustomPageTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    return SlideTransition(
+      position: Tween<Offset>(
+        begin: const Offset(1, 0),
+        end: Offset.zero,
+      ).animate(CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+      )),
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: Offset.zero,
+          end: const Offset(-0.2, 0),
+        ).animate(CurvedAnimation(
+          parent: secondaryAnimation,
+          curve: Curves.easeOutCubic,
+        )),
+        child: child,
+      ),
     );
   }
 }
