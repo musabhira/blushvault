@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'home_page.dart';
 import 'jewelry_layout_widget.dart';
 import 'home_widgets.dart';
+import 'loading_shimmer.dart';
 import 'wishlist_page.dart';
 import 'category_products_page.dart';
 
@@ -126,8 +127,7 @@ class _HomePageDesktopState extends State<HomePageDesktop> {
   @override
   Widget build(BuildContext context) {
     if (widget.isLoading) {
-      return const Center(
-          child: CircularProgressIndicator(color: Color(0xFF0A1E40)));
+      return const HomeShimmerLoading();
     }
 
     Widget content = Scaffold(

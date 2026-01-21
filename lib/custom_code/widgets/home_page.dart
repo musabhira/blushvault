@@ -19,7 +19,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final supabase = Supabase.instance.client;
+  SupabaseClient get supabase => Supabase.instance.client;
   List<dynamic> banners = [];
   List<dynamic> products = [];
   List<dynamic> categories = [];
@@ -100,13 +100,15 @@ class _HomePageState extends State<HomePage> {
           .eq('is_active', true)
           .order('order_position');
 
-      setState(() {
-        banners = bannersData;
-        products = productsData;
-        categories = categoriesData;
-        gallery = galleryData;
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          banners = bannersData;
+          products = productsData;
+          categories = categoriesData;
+          gallery = galleryData;
+          isLoading = false;
+        });
+      }
     } catch (e) {
       print('CRITICAL: Error loading data: $e');
       setState(() => isLoading = false);

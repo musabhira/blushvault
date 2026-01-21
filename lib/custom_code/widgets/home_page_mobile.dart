@@ -10,6 +10,7 @@ import 'wishlist_page.dart';
 import 'home_widgets.dart';
 import 'jewelry_layout_widget.dart';
 import 'category_products_page.dart';
+import 'loading_shimmer.dart';
 
 class HomePageMobile extends StatelessWidget {
   final List<dynamic> banners;
@@ -74,8 +75,7 @@ class HomePageMobile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return const Center(
-          child: CircularProgressIndicator(color: Color(0xFFB08D63)));
+      return const HomeShimmerLoading();
     }
 
     return Scaffold(

@@ -11,13 +11,39 @@ import 'index.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  GoRouter.optionURLReflectsImperativeAPIs = true;
-  usePathUrlStrategy();
 
-  await SupaFlow.initialize();
+  // Debug log to confirm JS started
+  print('DEBUG: App starting...');
 
-  await FlutterFlowTheme.initialize();
+  try {
+    GoRouter.optionURLReflectsImperativeAPIs = true;
+    usePathUrlStrategy();
 
+    print('DEBUG: Initializing Supabase...');
+    // Add timeout to Supabase init to prevent hanging
+    await SupaFlow.initialize().timeout(
+      const Duration(seconds: 5),
+      onTimeout: () {
+        print('DEBUG: Supabase initialization timed out! Continuing anyway...');
+        return null;
+      },
+    );
+    print('DEBUG: Supabase initialized (or timed out).');
+
+    print('DEBUG: Initializing Theme...');
+    await FlutterFlowTheme.initialize().timeout(
+      const Duration(seconds: 2),
+      onTimeout: () {
+        print('DEBUG: Theme initialization timed out! Continuing anyway...');
+        return null;
+      },
+    );
+    print('DEBUG: Theme initialized.');
+  } catch (e, stack) {
+    print('CRITICAL: Error during initialization: $e\n$stack');
+  }
+
+  print('DEBUG: Calling runApp...');
   runApp(MyApp());
 }
 
