@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'responsive_layout.dart';
 import 'product_detail_page_mobile.dart';
 import 'product_detail_page_desktop.dart';
+import 'razorpay_service.dart';
 
 class ProductDetailPage extends StatefulWidget {
   final Map<String, dynamic> product;
@@ -28,10 +28,55 @@ class ProductDetailPage extends StatefulWidget {
 
 class _ProductDetailPageState extends State<ProductDetailPage> {
   int quantity = 1;
+  late final RazorpayService _razorpayService;
+
+  @override
+  void initState() {
+    super.initState();
+    _razorpayService = RazorpayService(
+      context: context,
+      cartItems: _getCurrentItems(),
+      onSuccess: (paymentId) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Payment Successful! Payment ID: $paymentId'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      },
+      onFailure: (message) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Payment Failed: $message'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      },
+    );
+  }
+
+  List<Map<String, dynamic>> _getCurrentItems() {
+    return [
+      {
+        'id': widget.product['id'],
+        'name': widget.product['name'],
+        'price': widget.product['price'],
+        'image_url': widget.product['image_url'],
+        'quantity': quantity,
+      }
+    ];
+  }
+
+  @override
+  void dispose() {
+    _razorpayService.dispose();
+    super.dispose();
+  }
 
   void _incrementQuantity() {
     setState(() {
       quantity++;
+      _razorpayService.cartItems = _getCurrentItems();
     });
   }
 
@@ -39,34 +84,14 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     if (quantity > 1) {
       setState(() {
         quantity--;
+        _razorpayService.cartItems = _getCurrentItems();
       });
     }
   }
 
   Future<void> _buyNow() async {
-    final product = widget.product;
-    final total = product['price'] * quantity;
-
-    final StringBuffer message = StringBuffer();
-    message.writeln('*New Instant Order Request*');
-    message.writeln('----------------');
-    message.writeln('${product['name']} x $quantity: ₹$total');
-    message.writeln('----------------');
-    message.writeln('*Total: ₹$total*');
-
-    final String whatsappUrl =
-        'https://wa.me/919496905158?text=${Uri.encodeComponent(message.toString())}';
-
-    if (await canLaunchUrl(Uri.parse(whatsappUrl))) {
-      await launchUrl(Uri.parse(whatsappUrl));
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not launch WhatsApp'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+    final double total = (widget.product['price'] as num).toDouble() * quantity;
+    await _razorpayService.startCheckout(total);
   }
 
   @override

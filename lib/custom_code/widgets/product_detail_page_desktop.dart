@@ -412,22 +412,38 @@ class _ProductDetailPageDesktopState extends State<ProductDetailPageDesktop> {
                               child: SizedBox(
                                 height: 56,
                                 child: OutlinedButton(
-                                  onPressed: () => widget.onAddToCart(
-                                      widget.product,
-                                      quantity: widget.quantity),
+                                  onPressed:
+                                      (widget.product['stock_quantity'] ?? 0) >
+                                              0
+                                          ? () => widget.onAddToCart(
+                                              widget.product,
+                                              quantity: widget.quantity)
+                                          : null,
                                   style: OutlinedButton.styleFrom(
-                                    side: const BorderSide(
-                                        color: Color(0xFF997C5B)),
+                                    side: BorderSide(
+                                        color:
+                                            (widget.product['stock_quantity'] ??
+                                                        0) >
+                                                    0
+                                                ? const Color(0xFF997C5B)
+                                                : Colors.grey),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(30),
                                     ),
                                   ),
                                   child: Text(
-                                    'ADD TO CART',
+                                    (widget.product['stock_quantity'] ?? 0) > 0
+                                        ? 'ADD TO CART'
+                                        : 'OUT OF STOCK',
                                     style: GoogleFonts.nunitoSans(
                                       fontSize: 14,
                                       fontWeight: FontWeight.bold,
-                                      color: const Color(0xFF997C5B),
+                                      color:
+                                          (widget.product['stock_quantity'] ??
+                                                      0) >
+                                                  0
+                                              ? const Color(0xFF997C5B)
+                                              : Colors.grey,
                                       letterSpacing: 1.2,
                                     ),
                                   ),
@@ -439,19 +455,35 @@ class _ProductDetailPageDesktopState extends State<ProductDetailPageDesktop> {
                               child: SizedBox(
                                 height: 56,
                                 child: ElevatedButton(
-                                  onPressed: widget.onBuyNow,
+                                  onPressed:
+                                      (widget.product['stock_quantity'] ?? 0) >
+                                              0
+                                          ? widget.onBuyNow
+                                          : null,
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF997C5B),
+                                    backgroundColor:
+                                        (widget.product['stock_quantity'] ??
+                                                    0) >
+                                                0
+                                            ? const Color(0xFF997C5B)
+                                            : Colors.grey[300],
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(30),
                                     ),
                                   ),
                                   child: Text(
-                                    'BUY IT NOW',
+                                    (widget.product['stock_quantity'] ?? 0) > 0
+                                        ? 'BUY IT NOW'
+                                        : 'OUT OF STOCK',
                                     style: GoogleFonts.nunitoSans(
                                       fontSize: 14,
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.white,
+                                      color:
+                                          (widget.product['stock_quantity'] ??
+                                                      0) >
+                                                  0
+                                              ? Colors.white
+                                              : Colors.grey[600],
                                       letterSpacing: 1.2,
                                     ),
                                   ),

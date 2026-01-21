@@ -1,0 +1,200 @@
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
+import '/backend/supabase/supabase.dart';
+import 'auth_shipping_screen.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+
+// Conditional import to handle web-specific logic without breaking using dart:js on mobile
+import 'razorpay_stub.dart' if (dart.library.js) 'razorpay_web.dart';
+
+class RazorpayService {
+  late Razorpay _razorpay;
+  final BuildContext context;
+  List<Map<String, dynamic>> cartItems;
+  final Function(String paymentId) onSuccess;
+  final Function(String message) onFailure;
+
+  RazorpayService({
+    required this.context,
+    required this.cartItems,
+    required this.onSuccess,
+    required this.onFailure,
+  }) {
+    if (!kIsWeb) {
+      _razorpay = Razorpay();
+      _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
+      _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
+      _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
+    }
+  }
+
+  void dispose() {
+    if (!kIsWeb) {
+      _razorpay.clear();
+    }
+  }
+
+  Future<void> startCheckout(double amount) async {
+    final user = SupaFlow.client.auth.currentUser;
+
+    if (user == null) {
+      _showLoginAlert(amount);
+      return;
+    }
+
+    try {
+      final existingData = await SupaFlow.client
+          .from('user_shipping_details')
+          .select()
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+      if (existingData == null) {
+        _showAuthShippingFlow(amount);
+      } else {
+        _openRazorpay(
+          existingData['phone_number'],
+          existingData['address'],
+          amount,
+          user.email ?? '',
+        );
+      }
+    } catch (e) {
+      debugPrint('Error fetching shipping details: $e');
+      _showAuthShippingFlow(amount);
+    }
+  }
+
+  void _showLoginAlert(double amount) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Login Required',
+            style: GoogleFonts.nunitoSans(fontWeight: FontWeight.bold)),
+        content: Text(
+            'Please login to proceed with your purchase and save your shipping details.',
+            style: GoogleFonts.nunitoSans()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('CANCEL',
+                style: GoogleFonts.nunitoSans(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _showAuthShippingFlow(amount);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF997C5B),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+            child: Text('LOGIN / SIGNUP',
+                style: GoogleFonts.nunitoSans(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAuthShippingFlow(double amount) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.9,
+        maxChildSize: 0.9,
+        minChildSize: 0.5,
+        builder: (context, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFFFDFBF8),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2))),
+              Expanded(
+                child: AuthShippingScreen(
+                  onComplete: () async {
+                    Navigator.pop(context); // Close sheet
+
+                    final user = SupaFlow.client.auth.currentUser;
+                    if (user != null) {
+                      final data = await SupaFlow.client
+                          .from('user_shipping_details')
+                          .select()
+                          .eq('user_id', user.id)
+                          .maybeSingle(); // Changed to maybeSingle for safety
+
+                      if (data != null) {
+                        _openRazorpay(data['phone_number'], data['address'],
+                            amount, user.email ?? '');
+                      }
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openRazorpay(
+      String phone, String address, double amount, String email) {
+    print('DEBUG: Opening Razorpay for amount: $amount');
+
+    var options = {
+      'key': 'rzp_live_S6Ym62Ai4FrUMs', // Live Key ID
+      'amount': (amount * 100).toInt(), // Amount in paise
+      'name': 'BlushVault Jewels',
+      'description': 'Order Payment',
+      'retry': {'enabled': true, 'max_count': 1},
+      'send_sms_hash': true,
+      'prefill': {'contact': phone, 'email': email},
+      'notes': {
+        'shipping_address': address,
+        'items_count': cartItems.length.toString(),
+      },
+      'external': {
+        'wallets': ['paytm']
+      }
+    };
+
+    if (kIsWeb) {
+      // Use the conditionally imported custom web implementation
+      openRazorpayWeb(options, onSuccess, onFailure);
+    } else {
+      // Use the standard package for Mobile
+      try {
+        _razorpay.open(options);
+      } catch (e) {
+        debugPrint('Error starting Razorpay: $e');
+        onFailure('Could not open payment gateway');
+      }
+    }
+  }
+
+  void _handlePaymentSuccess(PaymentSuccessResponse response) {
+    onSuccess(response.paymentId ?? '');
+  }
+
+  void _handlePaymentError(PaymentFailureResponse response) {
+    onFailure(response.message ?? 'Payment Failed');
+  }
+
+  void _handleExternalWallet(ExternalWalletResponse response) {
+    onFailure('External wallet selected: ${response.walletName}');
+  }
+}

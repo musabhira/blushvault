@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
+
 import 'home_widgets.dart';
+import 'razorpay_service.dart';
 
 class CartPageDesktop extends StatefulWidget {
   final List<Map<String, dynamic>> cart;
@@ -29,6 +30,39 @@ class CartPageDesktop extends StatefulWidget {
 }
 
 class _CartPageDesktopState extends State<CartPageDesktop> {
+  late RazorpayService _razorpayService;
+
+  @override
+  void initState() {
+    super.initState();
+    _initRazorpay();
+  }
+
+  void _initRazorpay() {
+    _razorpayService = RazorpayService(
+      context: context,
+      cartItems: widget.cart,
+      onSuccess: (paymentId) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Payment Successful! ID: $paymentId')),
+        );
+      },
+      onFailure: (message) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Payment Failed: $message'),
+              backgroundColor: Colors.red),
+        );
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _razorpayService.dispose();
+    super.dispose();
+  }
+
   double get _subtotal {
     return widget.cart
         .fold(0, (sum, item) => sum + (item['price'] * item['quantity']));
@@ -54,34 +88,6 @@ class _CartPageDesktopState extends State<CartPageDesktop> {
     setState(() {
       widget.onRemove(index);
     });
-  }
-
-  Future<void> _launchWhatsApp() async {
-    final StringBuffer message = StringBuffer();
-    message.writeln('New Order Request');
-    message.writeln('----------------');
-    for (final item in widget.cart) {
-      final double totalItemPrice =
-          (item['price'] ?? 0.0) * (item['quantity'] ?? 1);
-      message.writeln(
-          '${item['name']} x ${item['quantity']}: ₹${totalItemPrice.toStringAsFixed(0)}');
-    }
-    message.writeln('----------------');
-    message.writeln('Total: ₹${_subtotal.toStringAsFixed(2)}');
-
-    final String whatsappUrl =
-        'https://wa.me/919496905158?text=${Uri.encodeComponent(message.toString())}';
-
-    if (await canLaunchUrl(Uri.parse(whatsappUrl))) {
-      await launchUrl(Uri.parse(whatsappUrl),
-          mode: LaunchMode.externalApplication);
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not launch WhatsApp')),
-        );
-      }
-    }
   }
 
   @override
@@ -473,7 +479,8 @@ class _CartPageDesktopState extends State<CartPageDesktop> {
                             width: double.infinity,
                             height: 56,
                             child: ElevatedButton(
-                              onPressed: _launchWhatsApp,
+                              onPressed: () =>
+                                  _razorpayService.startCheckout(_subtotal),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF997C5B),
                                 foregroundColor: Colors.white,

@@ -505,6 +505,31 @@ class ProductCard extends StatelessWidget {
                       ),
                     ),
                   ),
+                // Out of Stock Badge
+                if ((product['stock_quantity'] ?? 0) <= 0)
+                  Positioned.fill(
+                    child: Container(
+                      color: Colors.white.withOpacity(0.6),
+                      alignment: Alignment.center,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.black,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'OUT OF STOCK',
+                          style: GoogleFonts.nunitoSans(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
