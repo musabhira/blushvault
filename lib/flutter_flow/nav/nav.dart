@@ -62,6 +62,14 @@ GoRouter createRouter(AppStateNotifier appStateNotifier) => GoRouter(
           name: 'Admin',
           path: '/admin',
           builder: (context, params) => const AdminPage(),
+        ),
+        FFRoute(
+          name: 'PaymentSuccess',
+          path: '/payment_success',
+          builder: (context, params) => PaymentSuccessPage(
+            paymentId:
+                params.getParam<String>('paymentId', ParamType.String) ?? '',
+          ),
         )
       ].map((r) => r.toRoute(appStateNotifier)).toList(),
     );

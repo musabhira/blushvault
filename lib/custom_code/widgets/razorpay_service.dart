@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
+import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '/backend/supabase/supabase.dart';
 import 'auth_shipping_screen.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -36,68 +38,8 @@ class RazorpayService {
   }
 
   Future<void> startCheckout(double amount) async {
-    final user = SupaFlow.client.auth.currentUser;
-
-    if (user == null) {
-      _showLoginAlert(amount);
-      return;
-    }
-
-    try {
-      final existingData = await SupaFlow.client
-          .from('user_shipping_details')
-          .select()
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-      if (existingData == null) {
-        _showAuthShippingFlow(amount);
-      } else {
-        _openRazorpay(
-          existingData['phone_number'],
-          existingData['address'],
-          amount,
-          user.email ?? '',
-        );
-      }
-    } catch (e) {
-      debugPrint('Error fetching shipping details: $e');
-      _showAuthShippingFlow(amount);
-    }
-  }
-
-  void _showLoginAlert(double amount) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Login Required',
-            style: GoogleFonts.nunitoSans(fontWeight: FontWeight.bold)),
-        content: Text(
-            'Please login to proceed with your purchase and save your shipping details.',
-            style: GoogleFonts.nunitoSans()),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('CANCEL',
-                style: GoogleFonts.nunitoSans(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showAuthShippingFlow(amount);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF997C5B),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
-            ),
-            child: Text('LOGIN / SIGNUP',
-                style: GoogleFonts.nunitoSans(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
+    // Directly show the shipping flow (which handles Guest/Auto-fill logic)
+    _showAuthShippingFlow(amount);
   }
 
   void _showAuthShippingFlow(double amount) {
@@ -127,20 +69,7 @@ class RazorpayService {
                 child: AuthShippingScreen(
                   onComplete: () async {
                     Navigator.pop(context); // Close sheet
-
-                    final user = SupaFlow.client.auth.currentUser;
-                    if (user != null) {
-                      final data = await SupaFlow.client
-                          .from('user_shipping_details')
-                          .select()
-                          .eq('user_id', user.id)
-                          .maybeSingle(); // Changed to maybeSingle for safety
-
-                      if (data != null) {
-                        _openRazorpay(data['phone_number'], data['address'],
-                            amount, user.email ?? '');
-                      }
-                    }
+                    await _loadDetailsAndPay(amount);
                   },
                 ),
               ),
@@ -149,6 +78,29 @@ class RazorpayService {
         ),
       ),
     );
+  }
+
+  Future<void> _loadDetailsAndPay(double amount) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final phone = prefs.getString('ship_phone') ?? '';
+    final email = prefs.getString('ship_email') ?? '';
+
+    // Construct address
+    final address = [
+      prefs.getString('ship_address'),
+      prefs.getString('ship_street'),
+      prefs.getString('ship_area'),
+      prefs.getString('ship_city'),
+      prefs.getString('ship_state'),
+      prefs.getString('ship_pincode')
+    ].where((s) => s != null && s.isNotEmpty).join(', ');
+
+    if (phone.isNotEmpty) {
+      _openRazorpay(phone, address, amount, email);
+    } else {
+      onFailure("Missing shipping details");
+    }
   }
 
   void _openRazorpay(
@@ -174,7 +126,7 @@ class RazorpayService {
 
     if (kIsWeb) {
       // Use the conditionally imported custom web implementation
-      openRazorpayWeb(options, onSuccess, onFailure);
+      openRazorpayWeb(options, _handleWebSuccess, _handleWebFailure);
     } else {
       // Use the standard package for Mobile
       try {
@@ -186,7 +138,38 @@ class RazorpayService {
     }
   }
 
+  void _handleWebSuccess(String paymentId) {
+    _handlePaymentSuccess(PaymentSuccessResponse(paymentId, null, null, null));
+  }
+
+  void _handleWebFailure(String message) {
+    onFailure(message);
+  }
+
   void _handlePaymentSuccess(PaymentSuccessResponse response) {
+    // Navigate to Success Page
+    // Using context.goNamed requires the route to be registered.
+    // We added 'PaymentSuccess' route in nav.dart
+
+    try {
+      context.pushNamed('PaymentSuccess', pathParameters: {
+        'paymentId': response.paymentId ?? ''
+      } // Using pathParameters if defined as /:id or queryParams if not
+          );
+      // Note: In nav.dart I defined path as /payment_success
+      // And retrieved param via params.getParam.
+      // Usually GoRouter uses query params for extra data if not in path.
+      // Let's use context.pushNamed with queryParameters if getParam handles it.
+      // Actually Nav.dart uses params.getParam which usually looks at all params.
+      // I will use extra object or query params.
+
+      // Let's use pushNamed (which pushes a new page on stack)
+      context.pushNamed('PaymentSuccess',
+          queryParameters: {'paymentId': response.paymentId ?? ''});
+    } catch (e) {
+      print("Navigation Error: $e");
+    }
+
     onSuccess(response.paymentId ?? '');
   }
 

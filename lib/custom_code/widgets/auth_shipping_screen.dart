@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:uuid/uuid.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '/backend/supabase/supabase.dart';
 import 'shipping_details_form.dart';
 
@@ -13,76 +15,85 @@ class AuthShippingScreen extends StatefulWidget {
 }
 
 class _AuthShippingScreenState extends State<AuthShippingScreen> {
-  bool _isLogin = true;
-  bool _isLoading = false;
-  bool _showShipping = false;
-
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _formKey = GlobalKey<FormState>();
+  bool _isLoading = true;
+  bool _showForm = true;
+  Map<String, dynamic> _shippingData = {};
+  String? _guestUserId;
 
   @override
   void initState() {
     super.initState();
-    // If already logged in, skip to shipping
-    if (SupaFlow.client.auth.currentUser != null) {
-      _showShipping = true;
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    // Get or Create Guest ID
+    String? userId = prefs.getString('guest_user_id');
+    if (userId == null) {
+      userId = const Uuid().v4();
+      await prefs.setString('guest_user_id', userId);
+    }
+    _guestUserId = userId;
+
+    // Load Shipping Info
+    final name = prefs.getString('ship_full_name');
+    final phone = prefs.getString('ship_phone');
+
+    // If we have basic info, assume we have data
+    if (name != null && name.isNotEmpty && phone != null && phone.isNotEmpty) {
+      setState(() {
+        _shippingData = {
+          'full_name': name,
+          'email': prefs.getString('ship_email') ?? '',
+          'phone_number': phone,
+          'address_line1': prefs.getString('ship_address') ?? '',
+          'street_name': prefs.getString('ship_street') ?? '',
+          'area_name': prefs.getString('ship_area') ?? '',
+          'state_name': prefs.getString('ship_state') ?? '',
+          'pincode': prefs.getString('ship_pincode') ?? '',
+          'city_name': prefs.getString('ship_city') ?? '',
+          'country_code': prefs.getString('ship_country_code') ?? '+91',
+        };
+        _showForm = false;
+        _isLoading = false;
+      });
+    } else {
+      setState(() {
+        _showForm = true;
+        _isLoading = false;
+      });
     }
   }
 
-  Future<void> _handleAuth() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _isLoading = true);
+  Future<void> _saveToTable(Map<String, dynamic> data) async {
+    if (_guestUserId == null) return;
 
     try {
-      if (_isLogin) {
-        await SupaFlow.client.auth.signInWithPassword(
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
-        );
-      } else {
-        await SupaFlow.client.auth.signUp(
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
-        );
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text(
-                  'Account created! Please verify your email if required.')),
-        );
-      }
-
-      // Check if shipping data exists
-      final user = SupaFlow.client.auth.currentUser;
-      if (user != null) {
-        final existingData = await SupaFlow.client
-            .from('user_shipping_details')
-            .select()
-            .eq('user_id', user.id)
-            .maybeSingle();
-
-        if (existingData != null) {
-          // Already have data, complete now
-          widget.onComplete();
-        } else {
-          // Move to shipping step
-          setState(() => _showShipping = true);
-        }
-      }
+      // Attempt to save to Supabase.
+      // This might fail if the table requires authenticated user_id.
+      // If so, we just catch and ignore, relying on Local Storage.
+      await SupaFlow.client.from('user_shipping_details').upsert({
+        'user_id': _guestUserId!, // Using Guest ID
+        ...data,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
-      );
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      debugPrint('Supabase Save Error (Guest Flow): $e');
+      // Continue anyway, as we have Local Storage
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(
+          child: CircularProgressIndicator(color: Color(0xFF997C5B)));
+    }
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFDFBF8), // Soft cream background
+      backgroundColor: const Color(0xFFFDFBF8),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -90,15 +101,40 @@ class _AuthShippingScreenState extends State<AuthShippingScreen> {
           icon: const Icon(Icons.close, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
+        title: Text(
+          'Checkout',
+          style: GoogleFonts.nunitoSans(
+              color: Colors.black, fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
       ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 400),
+            constraints: const BoxConstraints(maxWidth: 500),
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 400),
-              child: _showShipping ? _buildShippingStep() : _buildAuthStep(),
+              child: _showForm
+                  ? ShippingDetailsForm(
+                      initialData:
+                          _shippingData.isNotEmpty ? _shippingData : null,
+                      onSubmit: (data) async {
+                        setState(() => _isLoading = true);
+
+                        // Update local state
+                        _shippingData = data;
+
+                        // Save to Table (Try/Catch)
+                        await _saveToTable(data);
+
+                        setState(() {
+                          _isLoading = false;
+                          _showForm = false;
+                        });
+                      },
+                    )
+                  : _buildSummaryStep(),
             ),
           ),
         ),
@@ -106,162 +142,90 @@ class _AuthShippingScreenState extends State<AuthShippingScreen> {
     );
   }
 
-  Widget _buildAuthStep() {
+  Widget _buildSummaryStep() {
     return Column(
-      key: const ValueKey('auth_step'),
-      crossAxisAlignment: CrossAxisAlignment.center,
+      key: const ValueKey('summary_step'),
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Brand Logo
-        Image.network(
-          'https://storage.googleapis.com/flutterflow-io-6f20.appspot.com/projects/blushvault-jw8pdn/assets/gpx3poi3nbc1/Asset_25.png',
-          height: 40,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Shipping To',
+                style: GoogleFonts.nunitoSans(
+                    fontSize: 20, fontWeight: FontWeight.bold)),
+            TextButton.icon(
+              onPressed: () => setState(() => _showForm = true),
+              icon: const Icon(Icons.edit_outlined,
+                  size: 18, color: Color(0xFF997C5B)),
+              label: Text('EDIT',
+                  style: GoogleFonts.nunitoSans(
+                      color: const Color(0xFF997C5B),
+                      fontWeight: FontWeight.bold)),
+            ),
+          ],
         ),
-        const SizedBox(height: 40),
-        Text(
-          _isLogin ? 'Welcome Back' : 'Create Account',
-          style: GoogleFonts.nunitoSans(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          _isLogin
-              ? 'Login to proceed with your order.'
-              : 'Join BlushVault for a better shopping experience.',
-          textAlign: TextAlign.center,
-          style: GoogleFonts.nunitoSans(
-            fontSize: 16,
-            color: Colors.grey[600],
-          ),
-        ),
-        const SizedBox(height: 40),
-        Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              TextFormField(
-                controller: _emailController,
-                style: const TextStyle(color: Colors.black),
-                decoration: InputDecoration(
-                  labelText: 'Email Address',
-                  labelStyle: const TextStyle(color: Colors.black54),
-                  prefixIcon: const Icon(Icons.email_outlined),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
-                keyboardType: TextInputType.emailAddress,
-                validator: (v) => v == null || !v.contains('@')
-                    ? 'Enter a valid email'
-                    : null,
-              ),
-              const SizedBox(height: 20),
-              TextFormField(
-                controller: _passwordController,
-                style: const TextStyle(color: Colors.black),
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  labelStyle: const TextStyle(color: Colors.black54),
-                  prefixIcon: const Icon(Icons.lock_outline),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
-                obscureText: true,
-                validator: (v) => v == null || v.length < 6
-                    ? 'Password must be 6+ characters'
-                    : null,
-              ),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _handleAuth,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF997C5B),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    elevation: 0,
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2))
-                      : Text(
-                          _isLogin ? 'LOG IN' : 'SIGN UP',
-                          style: GoogleFonts.nunitoSans(
-                              fontWeight: FontWeight.bold, letterSpacing: 1.2),
-                        ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(_isLogin
-                      ? "Don't have an account? "
-                      : "Already have an account? "),
-                  GestureDetector(
-                    onTap: () => setState(() => _isLogin = !_isLogin),
-                    child: Text(
-                      _isLogin ? "Sign Up" : "Log In",
-                      style: const TextStyle(
-                        color: Color(0xFF997C5B),
-                        fontWeight: FontWeight.bold,
-                        decoration: TextDecoration.underline,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+        const SizedBox(height: 16),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey[200]!),
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withOpacity(0.02),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4))
             ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _summaryRow(
+                  Icons.person_outline, _shippingData['full_name'] ?? ''),
+              const SizedBox(height: 12),
+              _summaryRow(
+                  Icons.phone_outlined, _shippingData['phone_number'] ?? ''),
+              const SizedBox(height: 12),
+              _summaryRow(Icons.email_outlined, _shippingData['email'] ?? ''),
+              const Divider(height: 32),
+              _summaryRow(Icons.location_on_outlined,
+                  "${_shippingData['address_line1']}, ${_shippingData['street_name']}\n${_shippingData['area_name']}, ${_shippingData['city_name']}\n${_shippingData['state_name']} - ${_shippingData['pincode']}"),
+            ],
+          ),
+        ),
+        const SizedBox(height: 40),
+        SizedBox(
+          width: double.infinity,
+          height: 56,
+          child: ElevatedButton(
+            onPressed: widget.onComplete,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF997C5B),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+            child: Text('CONTINUE TO PAYMENT',
+                style: GoogleFonts.nunitoSans(
+                    fontWeight: FontWeight.bold, letterSpacing: 1.2)),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildShippingStep() {
-    return Column(
-      key: const ValueKey('shipping_step'),
+  Widget _summaryRow(IconData icon, String text) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Progress indicator
-        Row(
-          children: [
-            const Icon(Icons.check_circle, color: Colors.green),
-            const SizedBox(width: 8),
-            Text('Account Verified',
-                style: GoogleFonts.nunitoSans(
-                    color: Colors.green, fontWeight: FontWeight.bold)),
-          ],
-        ),
-        const SizedBox(height: 20),
-        ShippingDetailsForm(
-          onSubmit: (phone, address) async {
-            setState(() => _isLoading = true);
-            try {
-              final user = SupaFlow.client.auth.currentUser;
-              await SupaFlow.client.from('user_shipping_details').upsert({
-                'user_id': user!.id,
-                'phone_number': phone,
-                'address': address,
-                'updated_at': DateTime.now().toIso8601String(),
-              });
-              widget.onComplete();
-            } catch (e) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                    content: Text('Error saving details: $e'),
-                    backgroundColor: Colors.red),
-              );
-            } finally {
-              if (mounted) setState(() => _isLoading = false);
-            }
-          },
+        Icon(icon, size: 20, color: Colors.grey[600]),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(text,
+              style: GoogleFonts.nunitoSans(
+                  fontSize: 15, color: Colors.black87, height: 1.4)),
         ),
       ],
     );
