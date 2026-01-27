@@ -68,20 +68,22 @@ class _AuthShippingScreenState extends State<AuthShippingScreen> {
   }
 
   Future<void> _saveToTable(Map<String, dynamic> data) async {
-    if (_guestUserId == null) return;
+    // Only save to Supabase table if user is authenticated
+    final user = SupaFlow.client.auth.currentUser;
+    if (user == null) {
+      // Guest user: Data is already saved to LocalStorage in ShippingDetailsForm
+      // We do NOT save to 'user_shipping_details' because it requires a valid auth.users FK.
+      return;
+    }
 
     try {
-      // Attempt to save to Supabase.
-      // This might fail if the table requires authenticated user_id.
-      // If so, we just catch and ignore, relying on Local Storage.
       await SupaFlow.client.from('user_shipping_details').upsert({
-        'user_id': _guestUserId!, // Using Guest ID
+        'user_id': user.id,
         ...data,
         'updated_at': DateTime.now().toIso8601String(),
       });
     } catch (e) {
-      debugPrint('Supabase Save Error (Guest Flow): $e');
-      // Continue anyway, as we have Local Storage
+      debugPrint('Supabase Save Error (Auth Flow): $e');
     }
   }
 

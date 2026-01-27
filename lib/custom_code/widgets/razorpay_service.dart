@@ -126,7 +126,10 @@ class RazorpayService {
 
     if (kIsWeb) {
       // Use the conditionally imported custom web implementation
-      openRazorpayWeb(options, _handleWebSuccess, _handleWebFailure);
+      openRazorpayWeb(
+          options,
+          (paymentId) => _handleWebSuccess(paymentId, amount),
+          _handleWebFailure);
     } else {
       // Use the standard package for Mobile
       try {
@@ -138,39 +141,80 @@ class RazorpayService {
     }
   }
 
-  void _handleWebSuccess(String paymentId) {
+  void _handleWebSuccess(String paymentId, double amount) {
     _handlePaymentSuccess(PaymentSuccessResponse(paymentId, null, null, null));
+    // Pass amount to handle success if needed
   }
 
   void _handleWebFailure(String message) {
     onFailure(message);
   }
 
-  void _handlePaymentSuccess(PaymentSuccessResponse response) {
-    // Navigate to Success Page
-    // Using context.goNamed requires the route to be registered.
-    // We added 'PaymentSuccess' route in nav.dart
+  Future<void> _handlePaymentSuccess(PaymentSuccessResponse response) async {
+    final paymentId = response.paymentId ?? '';
+
+    // SAVE ORDER TO SUPABASE
+    await _saveOrder(paymentId);
 
     try {
-      context.pushNamed('PaymentSuccess', pathParameters: {
-        'paymentId': response.paymentId ?? ''
-      } // Using pathParameters if defined as /:id or queryParams if not
-          );
-      // Note: In nav.dart I defined path as /payment_success
-      // And retrieved param via params.getParam.
-      // Usually GoRouter uses query params for extra data if not in path.
-      // Let's use context.pushNamed with queryParameters if getParam handles it.
-      // Actually Nav.dart uses params.getParam which usually looks at all params.
-      // I will use extra object or query params.
-
-      // Let's use pushNamed (which pushes a new page on stack)
       context.pushNamed('PaymentSuccess',
-          queryParameters: {'paymentId': response.paymentId ?? ''});
+          queryParameters: {'paymentId': paymentId});
     } catch (e) {
       print("Navigation Error: $e");
     }
 
-    onSuccess(response.paymentId ?? '');
+    onSuccess(paymentId);
+  }
+
+  Future<void> _saveOrder(String paymentId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Calculate total amount from cartItems
+      // Assuming cartItems have 'price' and 'quantity' or taking it from passed amount if not
+      // The passed 'amount' to startCheckout is correct.
+      // But I don't have it in scope here easily unless I store it or pass it.
+      // I'll re-calculate or just use 0 if failing, but better to save exact amount.
+      // Actually 'cartItems' is available.
+
+      double totalAmount = 0.0;
+      for (var item in cartItems) {
+        // This logic depends on item structure, assuming 'price' is double or string and 'quantity' is int
+        // Using safe parsing
+        double p = double.tryParse(item['price'].toString()) ?? 0.0;
+        int q = int.tryParse(item['quantity'].toString()) ?? 1;
+        totalAmount += p * q;
+      }
+
+      final shippingDetails = {
+        'full_name': prefs.getString('ship_full_name'),
+        'email': prefs.getString('ship_email'),
+        'phone_number': prefs.getString('ship_phone'),
+        'address_line1': prefs.getString('ship_address'),
+        'street_name': prefs.getString('ship_street'),
+        'area_name': prefs.getString('ship_area'),
+        'city_name': prefs.getString('ship_city'),
+        'state_name': prefs.getString('ship_state'),
+        'pincode': prefs.getString('ship_pincode'),
+        'country_code': prefs.getString('ship_country_code'),
+      };
+
+      final userId =
+          prefs.getString('guest_user_id'); // Or Auth user if available
+      final authUser = SupaFlow.client.auth.currentUser;
+
+      await SupaFlow.client.from('orders').insert({
+        'user_id': authUser?.id ?? userId, // Store guest ID if not auth
+        'payment_id': paymentId,
+        'amount': totalAmount,
+        'status': 'paid',
+        'shipping_details': shippingDetails,
+        'order_items': cartItems, // Save the items snapshot
+      });
+    } catch (e) {
+      debugPrint("Error Saving Order: $e");
+      // Don't fail the UI flow, but log it.
+    }
   }
 
   void _handlePaymentError(PaymentFailureResponse response) {

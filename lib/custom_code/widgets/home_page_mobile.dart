@@ -590,19 +590,19 @@ class CommonDrawer extends StatelessWidget {
               onShowCart();
             },
           ),
-          ListTile(
-            leading: const Icon(Icons.admin_panel_settings_outlined,
-                color: textPrimary),
-            title: Text('ADMIN PANEL',
-                style: GoogleFonts.nunitoSans(
-                  fontWeight: FontWeight.bold,
-                  color: textPrimary,
-                )),
-            onTap: () {
-              Navigator.pop(context);
-              context.pushNamed('Admin');
-            },
-          ),
+          // ListTile(
+          //   leading: const Icon(Icons.admin_panel_settings_outlined,
+          //       color: textPrimary),
+          //   title: Text('ADMIN PANEL',
+          //       style: GoogleFonts.nunitoSans(
+          //         fontWeight: FontWeight.bold,
+          //         color: textPrimary,
+          //       )),
+          //   onTap: () {
+          //     Navigator.pop(context);
+          //     context.pushNamed('Admin');
+          //   },
+          // ),
           const Divider(),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),

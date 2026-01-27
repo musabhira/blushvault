@@ -10,6 +10,8 @@ import 'serialization_util.dart';
 
 import '/index.dart';
 import '/custom_code/widgets/product_details_wrapper.dart';
+import '../../custom_code/widgets/payment_success_page.dart';
+import '../../custom_code/widgets/admin_orders_page.dart';
 import '/custom_code/widgets/admin_page.dart';
 
 export 'package:go_router/go_router.dart';
@@ -70,6 +72,11 @@ GoRouter createRouter(AppStateNotifier appStateNotifier) => GoRouter(
             paymentId:
                 params.getParam<String>('paymentId', ParamType.String) ?? '',
           ),
+        ),
+        FFRoute(
+          name: 'AdminOrders',
+          path: '/secrts/orders/detail',
+          builder: (context, params) => const AdminOrdersPage(),
         )
       ].map((r) => r.toRoute(appStateNotifier)).toList(),
     );
